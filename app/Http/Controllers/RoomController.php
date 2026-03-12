@@ -15,9 +15,17 @@ class RoomController extends Controller
         return view('rooms.index', compact('rooms'));
     }
     // Menampilkan Halaman Detail Ruangan (Bisa diakses Umat)
-    public function show(Room $room)
+public function show(Room $room)
     {
-        return view('rooms.show', compact('room'));
+        // Ambil semua jadwal kegiatan MENDATANG yang sudah disetujui untuk ruangan ini
+        $upcomingBookings = \App\Models\Booking::with('user')
+            ->where('room_id', $room->id)
+            ->where('status', 'approved')
+            ->whereDate('start_time', '>=', \Carbon\Carbon::today())
+            ->orderBy('start_time', 'asc')
+            ->get();
+
+        return view('rooms.show', compact('room', 'upcomingBookings'));
     }
 
     // 2. Menampilkan Form Tambah Ruangan (Create)

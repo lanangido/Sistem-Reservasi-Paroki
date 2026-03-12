@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AssetController;
+use App\Http\Controllers\UserController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -64,6 +65,7 @@ Route::post('/bookings', [BookingController::class, 'store'])->middleware(['auth
 // Rute untuk mengeksekusi persetujuan admin
 Route::post('/booking/{id}/approve', [BookingController::class, 'approve'])->name('booking.approve');
 Route::post('/booking/{id}/reject', [BookingController::class, 'reject'])->name('booking.reject');
+Route::post('/booking/{id}/complete', [BookingController::class, 'complete'])->name('booking.complete');
 
 // Rute Detail Ruangan (Semua user boleh akses)
 Route::get('/rooms/{room}/detail', [RoomController::class, 'show'])->middleware(['auth', 'verified'])->name('rooms.show');
@@ -85,5 +87,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('assets', AssetController::class);
 });
+
+Route::middleware(['auth', 'admin'])->group(function () {
+    Route::resource('assets', AssetController::class);
+    Route::resource('users', UserController::class); // <-- Tambahkan baris ini
+});
+
+Route::get('/logs', [\App\Http\Controllers\LogController::class, 'index'])->name('logs.index');
 
 require __DIR__ . '/auth.php';

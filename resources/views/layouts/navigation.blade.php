@@ -1,6 +1,7 @@
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-md">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-24"> <div class="flex">
+        <div class="flex justify-between h-24">
+            <div class="flex">
                 <div class="shrink-0 flex items-center">
                     <a href="{{ route('dashboard') }}">
                         <x-application-logo class="block h-16 w-auto fill-current text-gray-800" />
@@ -12,14 +13,28 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+
                     @if(Auth::user()->role == 'admin' || Auth::user()->role == 'sekretariat')
                         <x-nav-link :href="route('rooms.index')" :active="request()->routeIs('rooms.*')">
-                            {{ __('Manajemen Aset') }}
+                            {{ __('Kelola Ruangan') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
+                            {{ __('Kelola Aset') }}
                         </x-nav-link>
                         <x-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.index')">
                             {{ __('Laporan') }}
                         </x-nav-link>
                     @endif
+
+                    @if(Auth::user()->role == 'admin')
+                        <x-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
+                            {{ __('Kelola Aset') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                            {{ __('Kelola Akun') }}
+                        </x-nav-link>
+                    @endif
+
                 </div>
             </div>
 
@@ -82,6 +97,32 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+
+            @if(Auth::user()->role == 'admin' || Auth::user()->role == 'sekretariat')
+                <x-responsive-nav-link :href="route('rooms.index')" :active="request()->routeIs('rooms.*')">
+                    {{ __('Kelola Ruangan') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
+                    {{ __('Kelola Aset') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('reports.index')" :active="request()->routeIs('reports.index')">
+                    {{ __('Laporan') }}
+                </x-responsive-nav-link>
+            @endif
+
+            @if(Auth::user()->role == 'admin')
+                <x-responsive-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
+                    {{ __('Kelola Aset') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                    {{ __('Kelola Akun') }}
+                </x-responsive-nav-link>
+
+                <x-nav-link :href="route('logs.index')" :active="request()->routeIs('logs.*')">
+                    {{ __('Riwayat Audit') }}
+                </x-nav-link>
+            @endif
+
         </div>
 
         <!-- Responsive Settings Options -->

@@ -39,7 +39,26 @@ class BookingController extends Controller
             'quantities' => 'nullable|array', // Array jumlah aset yang dipinjam
             'sop_agreement' => 'accepted'
         ]);
+        // === 1.5 VALIDASI SOP DIGITAL PAROKI ===
+        $start = \Carbon\Carbon::parse($request->start_time);
+        $end = \Carbon\Carbon::parse($request->end_time);
+        $now = \Carbon\Carbon::now();
 
+        // Aturan 1: Minimal H-3 (3 hari sebelum acara)
+        if ($start->copy()->startOfDay()->lt($now->copy()->addDays(3)->startOfDay())) {
+            return back()->withInput()->withErrors(['start_time' => 'Sesuai SOP, peminjaman minimal dilakukan 3 hari sebelum acara.']);
+        }
+
+        // Aturan 2: Maksimal 3 Bulan ke depan
+        if ($start->copy()->startOfDay()->gt($now->copy()->addMonths(3)->endOfDay())) {
+            return back()->withInput()->withErrors(['start_time' => 'Peminjaman maksimal hanya dapat dilakukan untuk 3 bulan ke depan.']);
+        }
+
+        // Aturan 3: Durasi maksimal 3 jam per slot
+        if ($start->diffInMinutes($end) > 180) { // 180 menit = 3 jam
+            return back()->withInput()->withErrors(['end_time' => 'Sesuai SOP, durasi maksimal peminjaman adalah 3 jam per slot untuk memberi kesempatan pada kelompok lain.']);
+        }
+        // === SELESAI VALIDASI SOP ===
         // Proteksi: User harus memilih minimal ruangan atau aset
         if (empty($request->room_id) && empty($request->asset_ids)) {
             return back()->withInput()->withErrors(['general' => 'Anda harus memilih minimal 1 ruangan atau 1 aset untuk dipinjam.']);
@@ -96,10 +115,21 @@ class BookingController extends Controller
         return redirect()->route('dashboard')->with('success', 'Pengajuan jadwal/aset berhasil dikirim! Silakan tunggu konfirmasi Sekretariat.');
     }
 
-    public function approve(Request $request, $id)
+public function approve(Request $request, $id)
     {
-        // Load relasi room DAN assets
         $booking = Booking::with(['user', 'room', 'assets'])->findOrFail($id);
+
+        // 1. CEK STOK SEBELUM APPROVE
+        foreach ($booking->assets as $asset) {
+            if ($asset->stock_available < $asset->pivot->quantity) {
+                return redirect()->back()->with('error', 'Gagal Disetujui: Stok aset "' . $asset->asset_name . '" tidak mencukupi untuk dipinjam saat ini.');
+            }
+        }
+
+        // 2. KURANGI STOK ASET JIKA AMAN
+        foreach ($booking->assets as $asset) {
+            $asset->decrement('stock_available', $asset->pivot->quantity);
+        }
 
         $booking->update([
             'status' => 'approved',
@@ -116,19 +146,16 @@ class BookingController extends Controller
         if ($booking->user->phone_number) {
             $tanggal = Carbon::parse($booking->start_time)->translatedFormat('l, d F Y');
             $jam = Carbon::parse($booking->start_time)->format('H:i') . ' - ' . Carbon::parse($booking->end_time)->format('H:i') . ' WIB';
-
-            // Kondisi tampilan nama ruangan jika null
             $namaRuangan = $booking->room ? $booking->room->name : '*(Hanya meminjam Aset)*';
 
             $pesan = "*NOTIFIKASI PAROKI PAULUS MIKI*\n\n";
             $pesan .= "Berkah Dalem Bpk/Ibu *{$booking->user->name}*,\n\n";
             $pesan .= "Pengajuan Anda telah *DISETUJUI* dengan rincian:\n\n";
-            $pesan .= "🏢 Ruangan: $namaRuangan\n";
+            $pesan .= "🏢 Fasilitas: $namaRuangan\n";
             $pesan .= "📅 Tanggal: $tanggal\n";
             $pesan .= "⏰ Waktu: $jam\n";
             $pesan .= "🎯 Kegiatan: {$booking->purpose}\n\n";
 
-            // Tambahkan rincian aset jika ada
             if ($booking->assets->count() > 0) {
                 $pesan .= "📦 *Aset yang dipinjam:*\n";
                 foreach ($booking->assets as $asset) {
@@ -136,23 +163,55 @@ class BookingController extends Controller
                 }
                 $pesan .= "\n";
             }
-
+            
             if ($request->admin_note) {
                 $pesan .= "📝 *Catatan Admin:* {$request->admin_note}\n\n";
             }
-
+            
             $pesan .= "Silakan gunakan fasilitas dengan baik. Terima kasih.\n\n_Sistem Reservasi Paroki Paulus Miki_";
 
-            $response = Http::withoutVerifying()->withHeaders([
-                'Authorization' => env('FONNTE_TOKEN'),
-            ])->post('https://api.fonnte.com/send', [
-                        'target' => $booking->user->phone_number,
-                        'message' => $pesan,
-                    ]);
+            // Eksekusi API WA
+            try {
+                Http::withoutVerifying()->withHeaders([
+                    'Authorization' => env('FONNTE_TOKEN'),
+                ])->post('https://api.fonnte.com/send', [
+                    'target' => $booking->user->phone_number,
+                    'message' => $pesan,
+                ]);
+            } catch (\Exception $e) {
+                // Abaikan jika WA gagal agar aplikasi tidak error
+            }
         }
         // --- SELESAI SCRIPT FONNTE ---
 
-        return redirect()->back()->with('success', 'Pengajuan disetujui & Pesan WA telah terkirim!');
+        return redirect()->back()->with('success', 'Pengajuan disetujui, Stok Aset dikurangi & Pesan WA telah terkirim!');
+    }
+
+    // FUNGSI BARU: MENYELESAIKAN KEGIATAN & MENGEMBALIKAN ASET
+    public function complete(Request $request, $id)
+    {
+        $booking = Booking::with('assets')->findOrFail($id);
+
+        if ($booking->status !== 'approved') {
+            return redirect()->back()->with('error', 'Hanya jadwal yang berstatus "Disetujui" yang dapat diselesaikan.');
+        }
+
+        // KEMBALIKAN STOK ASET KE INVENTARIS
+        foreach ($booking->assets as $asset) {
+            $asset->increment('stock_available', $asset->pivot->quantity);
+        }
+
+        $booking->update([
+            'status' => 'completed'
+        ]);
+
+        Log::create([
+            'booking_id' => $booking->id,
+            'actor_id' => auth()->id(),
+            'action' => 'completed',
+        ]);
+
+        return redirect()->back()->with('success', 'Kegiatan Selesai! Stok aset telah berhasil dikembalikan ke inventaris Paroki.');
     }
 
     // Fungsi untuk Admin Menolak Jadwal

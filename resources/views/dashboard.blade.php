@@ -110,11 +110,11 @@
                                     class="block text-center w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm shadow-sm">
                                     Ajukan Peminjaman
                                 </a>
-                            @elseif(Auth::user()->role == 'sekretariat')
-                                <button
-                                    class="w-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 font-bold py-2.5 px-4 rounded-lg transition-colors text-sm">
+                            @elseif(Auth::user()->role == 'sekretariat' || Auth::user()->role == 'admin')
+                                <a href="{{ route('rooms.show', $room->id) }}"
+                                    class="block text-center w-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 font-bold py-2.5 px-4 rounded-lg transition-colors text-sm">
                                     Kelola Jadwal Ruangan
-                                </button>
+                                </a>
                             @else
                                 <button
                                     class="w-full bg-gray-200 text-gray-500 font-bold py-2.5 px-4 rounded-lg cursor-not-allowed text-sm"
@@ -340,12 +340,20 @@
                                             <div class="text-xs text-emerald-600 font-medium mt-1">{{ $booking->attendees }} Peserta Terjadwal</div>
                                         </td>
                                         <td class="p-4 text-center align-top">
-                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200 shadow-sm">
-                                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                                                </svg>
-                                                Disetujui
-                                            </span>
+                                            <div class="flex flex-col gap-2 items-center">
+                                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200 shadow-sm w-full justify-center">
+                                                    Disetujui
+                                                </span>
+                                                
+                                                <form action="{{ route('booking.complete', $booking->id) }}" method="POST" class="w-full">
+                                                    @csrf
+                                                    <button type="submit" 
+                                                        onclick="return confirm('Apakah kegiatan ini sudah selesai dan seluruh aset telah dikembalikan dengan aman?')" 
+                                                        class="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition-colors">
+                                                        Tandai Selesai &<br>Kembalikan Aset
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty

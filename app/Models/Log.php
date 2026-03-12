@@ -15,4 +15,22 @@ class Log extends Model
         'actor_id',
         'action',
     ];
+
+    /**
+     * Relasi ke tabel users (Aktor)
+     * Untuk mengetahui Admin/Sekretariat siapa yang melakukan klik "Setujui" / "Selesai"
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'actor_id');
+    }
+
+    /**
+     * Relasi ke tabel bookings
+     * Untuk mengetahui pengajuan jadwal mana yang diubah statusnya
+     */
+    public function booking()
+    {
+        return $this->belongsTo(Booking::class);
+    }
 }

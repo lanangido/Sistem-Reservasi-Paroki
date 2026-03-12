@@ -14,6 +14,7 @@
 
     <!-- Scripts -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="icon" href="{{ asset('images/logo-paroki.png') }}" type="image/png">
 </head>
 
 <body class="font-sans antialiased">
