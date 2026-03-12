@@ -16,7 +16,7 @@ public function up(): void
         
         // Foreign Keys (Relasi ke tabel users dan rooms)
         $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-        $table->foreignId('room_id')->constrained('rooms')->cascadeOnDelete();
+        $table->foreignId('room_id')->nullable()->constrained('rooms')->nullOnDelete();
         
         // Detail Acara
         $table->dateTime('start_time'); // Waktu mulai

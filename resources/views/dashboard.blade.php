@@ -35,9 +35,20 @@
                 </div>
             </div>
 
-            <div class="mb-6 flex justify-between items-end border-b border-gray-200 pb-3">
-                <h4 class="text-2xl font-bold text-gray-800">Fasilitas & Ruangan</h4>
-                <span class="text-sm text-gray-500">Pilih ruangan untuk reservasi</span>
+            <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-gray-200 pb-3 gap-4">
+                <div>
+                    <h4 class="text-2xl font-bold text-gray-800">Fasilitas & Aset Paroki</h4>
+                    <span class="text-sm text-gray-500">Pilih ruangan spesifik di bawah ini atau ajukan peminjaman umum</span>
+                </div>
+                
+                @if(Auth::user()->role == 'umat')
+                    <a href="{{ route('bookings.create') }}" class="inline-flex items-center bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 font-bold transition-all shadow-md text-sm hover:-translate-y-0.5">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Buat Pengajuan Peminjaman
+                    </a>
+                @endif
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -92,10 +103,10 @@
                                 {{ $room->description }}
                             </p>
                         </div>
-
+                        
                         <div class="p-4 bg-gray-50 border-t border-gray-100">
                             @if(Auth::user()->role == 'umat' && $room->is_active)
-                                <a href="{{ route('booking.create', $room->id) }}"
+                                <a href="{{ route('bookings.create', ['room_id' => $room->id]) }}"
                                     class="block text-center w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm shadow-sm">
                                     Ajukan Peminjaman
                                 </a>
@@ -125,7 +136,7 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-100 text-gray-600 text-sm uppercase tracking-wider">
-                                    <th class="p-4 border-b font-bold">Ruangan</th>
+                                    <th class="p-4 border-b font-bold">Fasilitas & Aset</th>
                                     <th class="p-4 border-b font-bold">Tujuan Kegiatan</th>
                                     <th class="p-4 border-b font-bold">Waktu Pelaksanaan</th>
                                     <th class="p-4 border-b font-bold text-center">Status</th>
@@ -134,8 +145,22 @@
                             <tbody class="text-gray-700 divide-y divide-gray-100">
                                 @forelse ($myBookings as $booking)
                                     <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="p-4 font-semibold text-gray-900">
-                                            {{ $booking->room->name ?? 'Ruangan Dihapus' }}
+                                        <td class="p-4">
+                                            @if($booking->room)
+                                                <div class="font-semibold text-gray-900">{{ $booking->room->name }}</div>
+                                            @else
+                                                <div class="font-semibold text-indigo-600 italic">Hanya Peminjaman Aset</div>
+                                            @endif
+                                            
+                                            @if($booking->assets->count() > 0)
+                                                <div class="mt-2 flex flex-wrap gap-1">
+                                                    @foreach($booking->assets as $asset)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-gray-800">
+                                                            {{ $asset->asset_name }} ({{ $asset->pivot->quantity }}x)
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
                                         </td>
                                         <td class="p-4">
                                             {{ $booking->purpose }} <br>
@@ -161,7 +186,7 @@
                                         <td colspan="4" class="p-8 text-center text-gray-500 bg-gray-50">
                                             <div class="flex flex-col items-center justify-center">
                                                 <span class="text-4xl mb-3 opacity-50">📂</span>
-                                                <p>Belum ada riwayat pengajuan peminjaman ruangan.</p>
+                                                <p>Belum ada riwayat pengajuan peminjaman.</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -184,27 +209,43 @@
                             <thead>
                                 <tr class="bg-white text-gray-500 text-xs uppercase tracking-wider">
                                     <th class="p-4 border-b font-bold w-1/4">Pemohon</th>
-                                    <th class="p-4 border-b font-bold w-1/4">Ruangan & Waktu</th>
-                                    <th class="p-4 border-b font-bold text-center w-1/3">Aksi (Validasi)</th>
+                                    <th class="p-4 border-b font-bold w-2/4">Fasilitas, Aset & Waktu</th>
+                                    <th class="p-4 border-b font-bold text-center w-1/4">Aksi (Validasi)</th>
                                 </tr>
                             </thead>
                             <tbody class="text-gray-700 divide-y divide-gray-100">
                                 @forelse ($pendingBookings as $booking)
                                     <tr class="hover:bg-gray-50 transition-colors">
-                                        <td class="p-4">
+                                        <td class="p-4 align-top">
                                             <div class="font-bold text-gray-900">{{ $booking->user->name }}</div>
                                             <div class="text-xs text-gray-500">{{ $booking->user->lingkungan ?? 'Umat' }}</div>
                                             <div class="text-xs text-blue-600 mt-1">{{ $booking->purpose }} ({{ $booking->attendees }} Orang)</div>
                                         </td>
-                                        <td class="p-4">
-                                            <div class="font-bold text-indigo-700">{{ $booking->room->name }}</div>
-                                            <div class="text-sm text-gray-800">
+                                        <td class="p-4 align-top">
+                                            @if($booking->room)
+                                                <div class="font-bold text-indigo-700">{{ $booking->room->name }}</div>
+                                            @else
+                                                <div class="font-bold text-indigo-500 italic">Hanya Peminjaman Aset</div>
+                                            @endif
+                                            
+                                            <div class="text-sm text-gray-800 mt-1">
                                                 {{ \Carbon\Carbon::parse($booking->start_time)->translatedFormat('d M Y') }}
                                             </div>
                                             <div class="text-xs font-semibold text-gray-500">
                                                 {{ \Carbon\Carbon::parse($booking->start_time)->translatedFormat('H:i') }} -
                                                 {{ \Carbon\Carbon::parse($booking->end_time)->translatedFormat('H:i') }} WIB
                                             </div>
+
+                                            @if($booking->assets->count() > 0)
+                                                <div class="mt-2 text-xs text-gray-600 border-t border-gray-100 pt-2">
+                                                    <strong class="text-gray-800">Aset Tambahan:</strong>
+                                                    <ul class="list-disc list-inside mt-1">
+                                                        @foreach($booking->assets as $asset)
+                                                            <li>{{ $asset->asset_name }} ({{ $asset->pivot->quantity }} unit)</li>
+                                                        @endforeach
+                                                    </ul>
+                                                </div>
+                                            @endif
                                         </td>
                                         
                                         <td class="p-4 align-middle">
@@ -234,7 +275,7 @@
                                     <tr>
                                         <td colspan="3" class="p-8 text-center text-gray-500 bg-gray-50">
                                             <span class="text-4xl mb-3 opacity-50">☕</span>
-                                            <p>Belum ada antrean jadwal yang perlu di-review.</p>
+                                            <p>Belum ada antrean pengajuan yang perlu di-review.</p>
                                         </td>
                                     </tr>
                                 @endforelse
@@ -252,7 +293,7 @@
                             <thead>
                                 <tr class="bg-white text-gray-500 text-xs uppercase tracking-wider">
                                     <th class="p-4 border-b font-bold w-1/4">Tanggal & Waktu</th>
-                                    <th class="p-4 border-b font-bold w-1/4">Ruangan</th>
+                                    <th class="p-4 border-b font-bold w-1/4">Fasilitas / Ruangan</th>
                                     <th class="p-4 border-b font-bold w-1/3">Kegiatan & Penanggung Jawab</th>
                                     <th class="p-4 border-b font-bold text-center">Status</th>
                                 </tr>
@@ -260,7 +301,7 @@
                             <tbody class="text-gray-700 divide-y divide-gray-100">
                                 @forelse ($upcomingBookings as $booking)
                                     <tr class="hover:bg-emerald-50/50 transition-colors">
-                                        <td class="p-4">
+                                        <td class="p-4 align-top">
                                             <div class="font-bold text-emerald-700 text-base">
                                                 {{ \Carbon\Carbon::parse($booking->start_time)->translatedFormat('l, d M Y') }}
                                             </div>
@@ -272,11 +313,25 @@
                                                 {{ \Carbon\Carbon::parse($booking->end_time)->translatedFormat('H:i') }} WIB
                                             </div>
                                         </td>
-                                        <td class="p-4">
-                                            <div class="font-bold text-gray-900">{{ $booking->room->name }}</div>
-                                            <div class="text-xs text-gray-500 mt-1">Kapasitas: {{ $booking->room->capacity }} Orang</div>
+                                        <td class="p-4 align-top">
+                                            @if($booking->room)
+                                                <div class="font-bold text-gray-900">{{ $booking->room->name }}</div>
+                                                <div class="text-xs text-gray-500 mt-1">Kapasitas: {{ $booking->room->capacity }} Orang</div>
+                                            @else
+                                                <div class="font-bold text-indigo-500 italic">Peminjaman Aset Saja</div>
+                                            @endif
+                                            
+                                            @if($booking->assets->count() > 0)
+                                                <div class="mt-2 flex flex-wrap gap-1">
+                                                    @foreach($booking->assets as $asset)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                                            {{ $asset->asset_name }} ({{ $asset->pivot->quantity }})
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @endif
                                         </td>
-                                        <td class="p-4">
+                                        <td class="p-4 align-top">
                                             <div class="font-bold text-gray-800">{{ $booking->purpose }}</div>
                                             <div class="text-sm text-gray-600 mt-1">
                                                 PJ: <span class="font-semibold">{{ $booking->user->name }}</span>
@@ -284,7 +339,7 @@
                                             </div>
                                             <div class="text-xs text-emerald-600 font-medium mt-1">{{ $booking->attendees }} Peserta Terjadwal</div>
                                         </td>
-                                        <td class="p-4 text-center">
+                                        <td class="p-4 text-center align-top">
                                             <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200 shadow-sm">
                                                 <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>

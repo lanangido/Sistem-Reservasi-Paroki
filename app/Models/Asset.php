@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Asset extends Model
 {
-    protected $fillable = ['asset_name', 'asset_code', 'room_id', 'stock_total', 'stock_available', 'condition', 'description'];
+    protected $guarded = ['id'];
 
-public function room()
-{
-    return $this->belongsTo(Room::class);
-}
+    public function bookings()
+    {
+        return $this->belongsToMany(Booking::class, 'asset_booking')
+                    ->withPivot('quantity')
+                    ->withTimestamps();
+    }
 }

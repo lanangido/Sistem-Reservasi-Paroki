@@ -20,27 +20,29 @@ Route::get('/dashboard', function () {
 
     // Jika yang login adalah UMAT
     if ($user->role == 'umat') {
-        $myBookings = \App\Models\Booking::where('user_id', $user->id)
+        // Ditambahkan eager loading 'room' dan 'assets' agar dashboard umat tidak berat saat loading
+        $myBookings = \App\Models\Booking::with(['room', 'assets'])
+            ->where('user_id', $user->id)
             ->orderBy('created_at', 'desc')->get();
+            
         return view('dashboard', compact('rooms', 'myBookings'));
     }
     // Jika yang login adalah SEKRETARIAT / ADMIN
-// Jika yang login adalah SEKRETARIAT / ADMIN
     else {
-        // 1. Ambil antrean jadwal yang masih 'pending'
-        $pendingBookings = \App\Models\Booking::with(['user', 'room'])
+        // 1. Ambil antrean jadwal yang masih 'pending' (Tambahkan relasi 'assets')
+        $pendingBookings = \App\Models\Booking::with(['user', 'room', 'assets'])
                             ->where('status', 'pending')
                             ->orderBy('created_at', 'asc')->get();
 
-        // 2. Ambil jadwal yang sudah 'approved' untuk kegiatan mendatang (Mulai dari hari ini ke depan)
-        $upcomingBookings = \App\Models\Booking::with(['user', 'room'])
+        // 2. Ambil jadwal yang sudah 'approved' untuk kegiatan mendatang (Tambahkan relasi 'assets')
+        $upcomingBookings = \App\Models\Booking::with(['user', 'room', 'assets'])
                             ->where('status', 'approved')
                             ->whereDate('start_time', '>=', \Carbon\Carbon::today())
                             ->orderBy('start_time', 'asc') // Urutkan berdasarkan tanggal mainnya terdekat
                             ->take(10) // Tampilkan maksimal 10 jadwal terdekat agar tidak terlalu panjang
                             ->get();
 
-        // Lempar kedua variabel tersebut ke tampilan dashboard
+        // Lempar variabel tersebut ke tampilan dashboard
         return view('dashboard', compact('rooms', 'pendingBookings', 'upcomingBookings'));
     }
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -50,15 +52,22 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
-// Rute untuk melihat form peminjaman (hanya untuk user yang sudah login)
-Route::get('/booking/{room}', [BookingController::class, 'create'])->middleware(['auth', 'verified'])->name('booking.create');
-// Rute untuk memproses dan menyimpan data form
-Route::post('/booking/{room}', [BookingController::class, 'store'])->middleware(['auth', 'verified'])->name('booking.store');
+
+// --- RUTE PEMINJAMAN (BOOKING) BARU ---
+// Rute untuk melihat form peminjaman (Parameter {room} Dihapus)
+Route::get('/booking/create', [BookingController::class, 'create'])->middleware(['auth', 'verified'])->name('bookings.create');
+
+// Rute untuk memproses dan menyimpan data form (Parameter {room} Dihapus)
+Route::post('/bookings', [BookingController::class, 'store'])->middleware(['auth', 'verified'])->name('bookings.store');
+
+
 // Rute untuk mengeksekusi persetujuan admin
 Route::post('/booking/{id}/approve', [BookingController::class, 'approve'])->name('booking.approve');
 Route::post('/booking/{id}/reject', [BookingController::class, 'reject'])->name('booking.reject');
+
 // Rute Detail Ruangan (Semua user boleh akses)
-Route::get('/rooms/{room}/detail', [App\Http\Controllers\RoomController::class, 'show'])->middleware(['auth', 'verified'])->name('rooms.show');
+Route::get('/rooms/{room}/detail', [RoomController::class, 'show'])->middleware(['auth', 'verified'])->name('rooms.show');
+
 // Rute Khusus Manajemen Ruangan (Hanya untuk Admin & Sekretariat)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/rooms', [RoomController::class, 'index'])->name('rooms.index');
@@ -66,11 +75,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/rooms', [RoomController::class, 'store'])->name('rooms.store');
     Route::get('/rooms/{room}/edit', [RoomController::class, 'edit'])->name('rooms.edit');
     Route::patch('/rooms/{room}', [RoomController::class, 'update'])->name('rooms.update');
-    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    
+    // Rute Laporan (Duplikat route dihapus)
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/export-csv', [ReportController::class, 'exportCsv'])->name('reports.export');
 });
+
+// Rute Khusus Manajemen Aset
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('assets', AssetController::class);
 });
+
 require __DIR__ . '/auth.php';
