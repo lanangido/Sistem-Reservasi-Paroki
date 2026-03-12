@@ -1,0 +1,1 @@
+<img src="{{ asset('images/logo-paroki.png') }}" {{ $attributes->merge(['class' => 'h-16 w-auto']) }} alt="Logo Paroki">
