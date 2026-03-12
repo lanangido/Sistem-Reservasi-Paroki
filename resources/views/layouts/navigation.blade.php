@@ -33,6 +33,9 @@
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                             {{ __('Kelola Akun') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('logs.index')" :active="request()->routeIs('logs.*')">
+                            {{ __('Riwayat Audit') }}
+                        </x-nav-link>
                     @endif
 
                 </div>
@@ -118,10 +121,12 @@
                     {{ __('Kelola Akun') }}
                 </x-responsive-nav-link>
 
-                <x-nav-link :href="route('logs.index')" :active="request()->routeIs('logs.*')">
+                <x-responsive-nav-link :href="route('logs.index')" :active="request()->routeIs('logs.*')">
                     {{ __('Riwayat Audit') }}
-                </x-nav-link>
+                </x-responsive-nav-link>
             @endif
+
+
 
         </div>
 

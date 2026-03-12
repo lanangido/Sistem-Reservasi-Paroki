@@ -10,6 +10,7 @@ use App\Http\Controllers\RoomController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\LogController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -94,5 +95,12 @@ Route::middleware(['auth', 'admin'])->group(function () {
 });
 
 Route::get('/logs', [\App\Http\Controllers\LogController::class, 'index'])->name('logs.index');
+Route::middleware(['auth'])->group(function () {
+    // Tambahkan pengecekan role secara manual di dalam controller 
+    // atau gunakan middleware custom jika sudah punya.
+    Route::get('/admin/logs', [LogController::class, 'index'])
+        ->name('admin.logs')
+        ->middleware('can:admin-only'); 
+});
 
 require __DIR__ . '/auth.php';
